@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roti Canai Order</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f9f9f9; padding: 20px; max-width: 500px; margin: 0 auto; }
+        h1 { text-align: center; color: #d35400; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .status-bar { text-align: center; font-weight: bold; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+        .status-available { background-color: #d4edda; color: #155724; }
+        .status-sold { background-color: #f8d7da; color: #721c24; }
+        
+        label { display: block; margin-top: 15px; font-weight: 600; color: #333; }
+        input, select { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        
+        .product-option { border: 2px solid #eee; padding: 15px; margin-top: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .product-option:hover { border-color: #d35400; background: #fff5f0; }
+        .product-option input { width: auto; margin-right: 10px; }
+        
+        .addon-group { background: #f0f0f0; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .addon-item { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        
+        .total-box { font-size: 24px; font-weight: bold; text-align: right; margin: 20px 0; color: #d35400; }
+        
+        .btn { background-color: #27ae60; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .btn:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>🥞 Roti Canai Express</h1>
+
+    <!-- Stock Status -->
+    <div id="stock-status" class="status-bar">Loading stock...</div>
+
+    <!-- Order Form -->
+    <div id="order-form" class="card hidden">
+        <form id="rotiForm">
+            <label>Full Name</label>
+            <input type="text" id="name" required placeholder="Ali Bin Abu">
+
+            <label>Room Number</label>
+            <input type="text" id="room" required placeholder="A-12-05">
+
+            <label>Phone Number</label>
+            <input type="tel" id="phone" required placeholder="0123456789">
+
+            <label>Select Pack</label>
+            <select id="pack" onchange="calculateTotal()" required>
+                <option value="0" disabled selected>-- Choose Pack --</option>
+                <option value="150">OriPack (2 Roti + Sauce) - 150p</option>
+                <option value="200">Kawen Pack (1 Roti + 1 Egg + Sauce) - 200p</option>
+            </select>
+
+            <div class="addon-group">
+                <label style="margin-top:0">Add Ons</label>
+                <div class="addon-item">
+                    <span><input type="checkbox" id="add-roti" value="50" onchange="calculateTotal()"> Extra Roti</span>
+                    <span>+50p</span>
+                </div>
+                <div class="addon-item">
+                    <span><input type="checkbox" id="add-egg" value="100" onchange="calculateTotal()"> Extra Egg</span>
+                    <span>+100p</span>
+                </div>
+                <div class="addon-item">
+                    <span><input type="checkbox" id="add-sauce" value="50" onchange="calculateTotal()"> Extra Sauce</span>
+                    <span>+50p</span>
+                </div>
+            </div>
+
+            <div class="total-box">Total: <span id="display-total">0</span>p</div>
+
+            <button type="button" class="btn" id="submit-btn" onclick="submitOrder()">Place Order & Pay</button>
+        </form>
+    </div>
+
+    <!-- Sold Out Message -->
+    <div id="sold-out" class="card hidden" style="text-align: center;">
+        <h2 style="color:red">⛔ SOLD OUT</h2>
+        <p>We have reached our limit of 50 orders for today.</p>
+        <p>Please check back tomorrow!</p>
+    </div>
+
+    <script>
+        // CONFIGURATION
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwIhj9An-Co0aqNVzTgULvI2Ebifzik1pBJG55vHab_ZX-l_rvba7fpfZv5oKrdQNIb/exec"; // PASTE URL FROM PHASE 2
+        const YOOMONEY_WALLET = "4100119475590040"; // e.g. 41001123456789
+
+        let currentStock = 0;
+
+        // 1. Check Stock on Page Load
+        window.onload = function() {
+            fetch(SCRIPT_URL)
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('stock-status');
+                if(data.available > 0) {
+                    statusDiv.className = "status-bar status-available";
+                    statusDiv.innerText = `🔥 Only ${data.available} packs left!`;
+                    document.getElementById('order-form').classList.remove('hidden');
+                    currentStock = data.available;
+                } else {
+                    statusDiv.className = "status-bar status-sold";
+                    statusDiv.innerText = "Sold Out";
+                    document.getElementById('sold-out').classList.remove('hidden');
+                }
+            })
+            .catch(err => {
+                document.getElementById('stock-status').innerText = "Error connecting to server.";
+            });
+        };
+
+        // 2. Calculate Price Live
+        function calculateTotal() {
+            let total = parseInt(document.getElementById('pack').value);
+            if(document.getElementById('add-roti').checked) total += 50;
+            if(document.getElementById('add-egg').checked) total += 100;
+            if(document.getElementById('add-sauce').checked) total += 50;
+            
+            document.getElementById('display-total').innerText = total;
+            return total;
+        }
+
+        // 3. Submit Order
+        function submitOrder() {
+            const name = document.getElementById('name').value;
+            const room = document.getElementById('room').value;
+            const phone = document.getElementById('phone').value;
+            const packSelect = document.getElementById('pack');
+            const packName = packSelect.options[packSelect.selectedIndex].text;
+            const total = calculateTotal();
+
+            if(!name || !room || !phone || total === 0) {
+                alert("Please fill in all details and select a pack.");
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "Processing...";
+
+            // Build Order Description
+            let addons = [];
+            if(document.getElementById('add-roti').checked) addons.push("Extra Roti");
+            if(document.getElementById('add-egg').checked) addons.push("Extra Egg");
+            if(document.getElementById('add-sauce').checked) addons.push("Extra Sauce");
+            
+            let orderDetails = `${packName} ${addons.length > 0 ? '+ ' + addons.join(', ') : ''}`;
+
+            // Send Data to Google Sheet
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: name,
+                    room: room,
+                    phone: phone,
+                    orderDetails: orderDetails,
+                    totalPrice: total
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.result === "success") {
+                    // Redirect to Yoomoney
+                    // We construct a link that pre-fills the amount and description
+                    let yoomoneyLink = `https://yoomoney.ru/quickpay/confirm.xml?receiver=${YOOMONEY_WALLET}&quickpay=form&sum=${total}&targets=Roti Order: ${room}`;
+                    window.location.href = yoomoneyLink;
+                } else {
+                    alert("Sorry! Someone just bought the last pack. Refreshing page...");
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Network error. Please try again.");
+                btn.disabled = false;
+                btn.innerText = "Place Order & Pay";
+            });
+        }
+    </script>
+</body>
+</html>
